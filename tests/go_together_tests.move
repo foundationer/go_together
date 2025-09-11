@@ -1,8 +1,8 @@
-/*
+
 #[test_only]
 module go_together::go_together_tests;
-// uncomment this line to import the module
-// use go_together::go_together;
+
+use go_together::app;
 
 const ENotImplemented: u64 = 0;
 
@@ -15,4 +15,4 @@ fun test_go_together() {
 fun test_go_together_fail() {
     abort ENotImplemented
 }
-*/
+
