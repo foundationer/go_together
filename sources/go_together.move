@@ -32,6 +32,7 @@ module go_together::app {
     // --- Funciones ---
 
     // Crear un nuevo conductor, disponible para recibir viajes
+    #[allow(lint(self_transfer))]
     public fun registrar_conductor(nombre: String, coche: String, ctx: &mut TxContext) {
         let conductor = Conductor {
             id: object::new(ctx),
@@ -43,6 +44,7 @@ module go_together::app {
     }
 
     // Crear un nuevo pasajero
+    #[allow(lint(self_transfer))]
     public fun registrar_pasajero(nombre: String, ctx: &mut TxContext) {
         let pasajero = Pasajero {
             id: object::new(ctx),
@@ -52,6 +54,7 @@ module go_together::app {
     }
 
     // Reservar un viaje: el pasajero elige un conductor disponible
+    #[allow(lint(self_transfer))]
     public fun reservar_viaje(
         conductor: &mut Conductor,
         pasajero: &Pasajero,
@@ -59,6 +62,45 @@ module go_together::app {
         destino: String,
         ctx: &mut TxContext
     ) {
+        // Verificar que el conductor esté disponible
+        assert!(conductor.disponible, 1);
+
+        // Marcar conductor como no disponible
+        conductor.disponible = false;
+
+        // Crear el viaje
+        let viaje = crear_viaje(conductor, pasajero, origen, destino, ctx);
+
+        transfer::transfer(viaje, tx_context::sender(ctx));
+    }
+
+    // Finalizar un viaje, liberando al conductor
+    public fun finalizar_viaje(viaje: &mut Viaje, conductor: &mut Conductor) {
+        // Marcar viaje como inactivo
+        viaje.activo = false;
+
+        // Liberar conductor para nuevos viajes
+        conductor.disponible = true;
+    }
+
+    // Función para consultar si un conductor está disponible
+    public fun esta_disponible(conductor: &Conductor): bool {
+        conductor.disponible
+    }
+
+    // Función para actualizar la disponibilidad de un conductor
+    public fun actualizar_disponibilidad_conductor(conductor: &mut Conductor, disponible: bool) {
+        conductor.disponible = disponible;
+    }
+
+    // Función para crear un viaje público, devolviendo el objeto para que el caller lo transfiera
+    public fun crear_viaje(
+        conductor: &mut Conductor,
+        pasajero: &Pasajero,
+        origen: String,
+        destino: String,
+        ctx: &mut TxContext
+    ): Viaje {
         // Verificar que el conductor esté disponible
         assert!(conductor.disponible, 1);
 
@@ -74,16 +116,11 @@ module go_together::app {
             destino,
             activo: true,
         };
-
-        transfer::transfer(viaje, tx_context::sender(ctx));
+        viaje
     }
 
-    // Finalizar un viaje, liberando al conductor
-    public fun finalizar_viaje(viaje: &mut Viaje, conductor: &mut Conductor) {
-        // Marcar viaje como inactivo
-        viaje.activo = false;
-
-        // Liberar conductor para nuevos viajes
-        conductor.disponible = true;
+    // Función para consultar si un viaje está activo
+    public fun esta_activo(viaje: &Viaje): bool {
+        viaje.activo
     }
 }

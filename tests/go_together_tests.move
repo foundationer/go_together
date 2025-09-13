@@ -3,16 +3,38 @@
 module go_together::go_together_tests;
 
 use go_together::app;
+use sui::test_scenario;
+use std::string;
 
-const ENotImplemented: u64 = 0;
-
+// Test para registrar un conductor
 #[test]
-fun test_go_together() {
-    // pass
+fun test_registrar_conductor() {
+    // Llamamos a la función pública para registrar conductor
+    // No podemos validar el objeto directamente, pero si no hay error es exitoso.
+    let user = @0xAD;
+
+    let mut scenario = test_scenario::begin(user);
+
+    scenario.next_tx(user);
+    {
+        app::registrar_conductor(string::utf8(b"Juan"), string::utf8(b"Toyota"), scenario.ctx());
+    };
+
+    scenario.end();
 }
 
-#[test, expected_failure(abort_code = ::go_together::go_together_tests::ENotImplemented)]
-fun test_go_together_fail() {
-    abort ENotImplemented
+// Test para registrar pasajero
+#[test]
+fun test_registrar_pasajero() {
+    let user = @0xAD;
+
+    let mut scenario = test_scenario::begin(user);
+
+    scenario.next_tx(user);
+    {
+        app::registrar_pasajero(string::utf8(b"Ana"), scenario.ctx());
+    };
+
+    scenario.end();
 }
 
