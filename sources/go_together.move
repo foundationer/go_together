@@ -26,6 +26,14 @@ module go_together::app {
     public struct Pasajero has key, store {
         id: UID,
         nombre: String,
+        wallet: address
+    }
+
+    // Registro de pasajeros similar a RegistroConductores
+    public struct RegistroPasajeros has key, store {
+        id: UID,
+        pasajeros_registrados: VecSet<address>,
+        total_pasajeros: u64,
     }
 
     // Estructura para un viaje reservado
@@ -84,15 +92,44 @@ module go_together::app {
         transfer::transfer(conductor, propietario);
     }
 
+    // Crear el registro global (se llama una vez)
+    public fun crear_registro_pasajeros(ctx: &mut TxContext): RegistroPasajeros {
+        let registro = RegistroPasajeros {
+            id: object::new(ctx),
+            pasajeros_registrados: vec_set::empty(),
+            total_pasajeros: 0,
+        };
+        registro
+    }
+
     // Crear un nuevo pasajero
     #[allow(lint(self_transfer))]
-    public fun registrar_pasajero(nombre: String, ctx: &mut TxContext) {
+    public fun registrar_pasajero(registro: &mut RegistroPasajeros, nombre: String, ctx: &mut TxContext) {
         let pasajero = Pasajero {
             id: object::new(ctx),
             nombre,
+            wallet: tx_context::sender(ctx)
         };
+
+        // Validar que no esté ya registrado
+        assert!(!registro.pasajeros_registrados.contains(&pasajero.wallet), 1);
+
+        // Insertar pasajero en el conjunto
+        registro.pasajeros_registrados.insert(pasajero.wallet);
+        registro.total_pasajeros = registro.total_pasajeros + 1;
+
         transfer::transfer(pasajero, tx_context::sender(ctx));
     }
+
+    // Función para consultar si está registrado un pasajero
+    public fun esta_pasajero_registrado(registro: &RegistroPasajeros, user: address): bool {
+        registro.pasajeros_registrados.contains(&user)
+    }
+
+    public fun eliminar_registro_pasajeros(registro: RegistroPasajeros) {
+        let RegistroPasajeros { id, pasajeros_registrados: _, total_pasajeros: _ } = registro;
+        id.delete();
+    }  
 
     // Reservar un viaje: el pasajero elige un conductor disponible
     #[allow(lint(self_transfer))]

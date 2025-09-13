@@ -24,7 +24,7 @@ fun test_registrar_conductor() {
         assert!(esta, 100);
         app::eliminar_registro(registro);
     };
-    
+
     scenario.end();
 }
 
@@ -34,14 +34,16 @@ fun test_registrar_pasajero() {
     let user = @0xAD;
 
     let mut scenario = test_scenario::begin(user);
-    let mut registro = app::crear_registro(scenario.ctx());
+    let mut registro = app::crear_registro_pasajeros(scenario.ctx());
 
     scenario.next_tx(user);
     {
-        app::registrar_pasajero(string::utf8(b"Ana"), scenario.ctx());
+        app::registrar_pasajero(&mut registro, string::utf8(b"Ana"), scenario.ctx());
+        let esta = go_together::app::esta_pasajero_registrado(&registro, user);
+        assert!(esta, 100);
     };
 
-    app::eliminar_registro(registro);
+    app::eliminar_registro_pasajeros(registro);
     scenario.end();
 }
 
