@@ -2,6 +2,7 @@
 module go_together::app {
 
     use std::string::String;
+    use sui::vec_set::{Self, VecSet};
 
     // --- Estructuras ---
 
@@ -11,6 +12,14 @@ module go_together::app {
         nombre: String,
         coche: String,
         disponible: bool,
+        propietario: address, // Dirección del usuario que registró al conductor
+    }
+
+    // Registro global de conductores, guardando sus direcciones
+    public struct RegistroConductores has key, store {
+        id: UID,
+        conductores_registrados: VecSet<address>,
+        total_conductores: u64,
     }
 
     // Objeto para identificar a un pasajero
@@ -31,16 +40,48 @@ module go_together::app {
 
     // --- Funciones ---
 
+    // Crear el registro global (se llama una vez)
+    public fun crear_registro(ctx: &mut TxContext): RegistroConductores {
+        let registro = RegistroConductores {
+            id: object::new(ctx),
+            conductores_registrados: vec_set::empty(),
+            total_conductores: 0,
+        };
+        registro
+    }
+
+    // Función pública para validar si un usuario está registrado como conductor
+    public fun esta_conductor_registrado(registro: &RegistroConductores, user: address): bool {
+        registro.conductores_registrados.contains(&user)
+    }
+
+    public fun eliminar_registro(registro: RegistroConductores) {
+        let RegistroConductores { id, conductores_registrados: _, total_conductores: _ } = registro;
+        id.delete();
+    }   
+
     // Crear un nuevo conductor, disponible para recibir viajes
     #[allow(lint(self_transfer))]
-    public fun registrar_conductor(nombre: String, coche: String, ctx: &mut TxContext) {
+    public fun registrar_conductor(registro: &mut RegistroConductores, nombre: String, coche: String, ctx: &mut TxContext) {
+        let propietario = tx_context::sender(ctx);
+
+        // Validar que el conductor no esté ya registrado
+        assert!(!registro.conductores_registrados.contains(&propietario), 1);
+
         let conductor = Conductor {
             id: object::new(ctx),
             nombre,
             coche,
             disponible: true,
+            propietario
         };
-        transfer::transfer(conductor, tx_context::sender(ctx));
+
+        // Añadir el propietario al conjunto de conductores registrados
+        registro.conductores_registrados.insert(propietario);
+        registro.total_conductores = registro.total_conductores + 1;
+
+        // Transferir conductor al propietario
+        transfer::transfer(conductor, propietario);
     }
 
     // Crear un nuevo pasajero

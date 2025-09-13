@@ -13,13 +13,18 @@ fun test_registrar_conductor() {
     // No podemos validar el objeto directamente, pero si no hay error es exitoso.
     let user = @0xAD;
 
+
     let mut scenario = test_scenario::begin(user);
+    let mut registro = app::crear_registro(scenario.ctx());
 
     scenario.next_tx(user);
     {
-        app::registrar_conductor(string::utf8(b"Juan"), string::utf8(b"Toyota"), scenario.ctx());
+        app::registrar_conductor(&mut registro, string::utf8(b"Juan"), string::utf8(b"Toyota"), scenario.ctx());
+        let esta = go_together::app::esta_conductor_registrado(&registro, user);
+        assert!(esta, 100);
+        app::eliminar_registro(registro);
     };
-
+    
     scenario.end();
 }
 
@@ -29,12 +34,14 @@ fun test_registrar_pasajero() {
     let user = @0xAD;
 
     let mut scenario = test_scenario::begin(user);
+    let mut registro = app::crear_registro(scenario.ctx());
 
     scenario.next_tx(user);
     {
         app::registrar_pasajero(string::utf8(b"Ana"), scenario.ctx());
     };
 
+    app::eliminar_registro(registro);
     scenario.end();
 }
 
