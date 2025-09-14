@@ -1,7 +1,7 @@
 // Módulo principal para la app de car pooling
 module go_together::app {
 
-    use std::string::String;
+    use std::string::{Self, String};
     use sui::vec_set::{Self, VecSet};
 
     // --- Estructuras ---
@@ -48,6 +48,18 @@ module go_together::app {
 
     // --- Funciones ---
 
+    // Crear un viaje vacío
+    public fun crear_viaje_vacio(origen: String, destino: String, ctx: &mut TxContext): Viaje {
+        Viaje {
+            id: object::new(ctx),
+            conductor_nombre: string::utf8(b""),
+            pasajero_nombre: string::utf8(b""),
+            origen,
+            destino,
+            activo: false,
+        }
+    }
+
     // Crear el registro global (se llama una vez)
     public fun crear_registro(ctx: &mut TxContext): RegistroConductores {
         let registro = RegistroConductores {
@@ -68,13 +80,8 @@ module go_together::app {
         id.delete();
     }   
 
-    // Crear un nuevo conductor, disponible para recibir viajes
-    #[allow(lint(self_transfer))]
-    public fun registrar_conductor(registro: &mut RegistroConductores, nombre: String, coche: String, ctx: &mut TxContext) {
+    public fun crear_conductor(nombre: String, coche: String, ctx: &mut TxContext): Conductor {
         let propietario = tx_context::sender(ctx);
-
-        // Validar que el conductor no esté ya registrado
-        assert!(!registro.conductores_registrados.contains(&propietario), 1);
 
         let conductor = Conductor {
             id: object::new(ctx),
@@ -83,6 +90,17 @@ module go_together::app {
             disponible: true,
             propietario
         };
+        conductor
+    }
+
+    // Crear un nuevo conductor, disponible para recibir viajes
+    #[allow(lint(self_transfer))]
+    public fun registrar_conductor(registro: &mut RegistroConductores, conductor: Conductor) {
+        // Extraer el propietario antes de usar conductor
+        let propietario = conductor.propietario;
+        
+        // Validar que el conductor no esté ya registrado
+        assert!(!registro.conductores_registrados.contains(&propietario), 1);
 
         // Añadir el propietario al conjunto de conductores registrados
         registro.conductores_registrados.insert(propietario);
@@ -105,10 +123,11 @@ module go_together::app {
     // Crear un nuevo pasajero
     #[allow(lint(self_transfer))]
     public fun registrar_pasajero(registro: &mut RegistroPasajeros, nombre: String, ctx: &mut TxContext) {
+        let sender = tx_context::sender(ctx);
         let pasajero = Pasajero {
             id: object::new(ctx),
             nombre,
-            wallet: tx_context::sender(ctx)
+            wallet: sender
         };
 
         // Validar que no esté ya registrado
@@ -118,7 +137,7 @@ module go_together::app {
         registro.pasajeros_registrados.insert(pasajero.wallet);
         registro.total_pasajeros = registro.total_pasajeros + 1;
 
-        transfer::transfer(pasajero, tx_context::sender(ctx));
+        transfer::transfer(pasajero, sender);
     }
 
     // Función para consultar si está registrado un pasajero
@@ -132,13 +151,10 @@ module go_together::app {
     }  
 
     // Reservar un viaje: el pasajero elige un conductor disponible
-    #[allow(lint(self_transfer))]
     public fun reservar_viaje(
+        viaje: &mut Viaje,
         conductor: &mut Conductor,
-        pasajero: &Pasajero,
-        origen: String,
-        destino: String,
-        ctx: &mut TxContext
+        pasajero: &Pasajero
     ) {
         // Verificar que el conductor esté disponible
         assert!(conductor.disponible, 1);
@@ -146,10 +162,10 @@ module go_together::app {
         // Marcar conductor como no disponible
         conductor.disponible = false;
 
-        // Crear el viaje
-        let viaje = crear_viaje(conductor, pasajero, origen, destino, ctx);
-
-        transfer::transfer(viaje, tx_context::sender(ctx));
+        // Actualizar el viaje con los datos del conductor y pasajero
+        viaje.conductor_nombre = conductor.nombre;
+        viaje.pasajero_nombre = pasajero.nombre;
+        viaje.activo = true;
     }
 
     // Finalizar un viaje, liberando al conductor
