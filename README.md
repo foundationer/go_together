@@ -133,6 +133,59 @@ Run tests with:
 sui move test
 ```
 
+## 🚀 Example Scripts
+
+The project includes bash scripts that demonstrate how to use the Sui CLI to interact with the module:
+
+### Complete Script (`ejemplo_uso.sh`)
+A complete script that executes the entire carpooling flow:
+
+```bash
+./ejemplo_uso.sh
+```
+
+This script:
+- Compiles and publishes the module
+- Creates global registries
+- Registers a driver and a passenger
+- Creates a trip
+- Demonstrates trip finalization
+
+### Modular Script (`ejemplo_simple.sh`)
+A modular script for specific use cases:
+
+```bash
+# Build project
+./ejemplo_simple.sh build
+
+# Publish module
+./ejemplo_simple.sh publish
+
+# Create driver
+./ejemplo_simple.sh create-driver "John" "Toyota" <registry_id>
+
+# Create passenger
+./ejemplo_simple.sh create-passenger "Mary" <registry_id>
+
+# Create trip
+./ejemplo_simple.sh create-trip "Downtown" "Airport" <driver_id> <passenger_id>
+
+# Check status
+./ejemplo_simple.sh check-driver <driver_id>
+./ejemplo_simple.sh check-trip <trip_id>
+
+# Finalize trip
+./ejemplo_simple.sh finalize-trip <trip_id> <driver_id>
+```
+
+### Script Prerequisites
+- Sui CLI installed
+- Connection to testnet/devnet
+- SUI tokens for transactions
+- `jq` installed for JSON processing
+
+See `SCRIPT_EJEMPLO.md` for detailed documentation.
+
 ## 📁 Project Structure
 
 ```
@@ -143,6 +196,9 @@ go_together/
 │   └── go_together_tests.move    # Test suite
 ├── Move.toml                     # Project configuration
 ├── Move.lock                     # Dependency lock file
+├── ejemplo_uso.sh               # Complete demonstration script
+├── ejemplo_simple.sh            # Modular script for specific cases
+├── SCRIPT_EJEMPLO.md            # Script documentation
 └── README.md                     # This file
 ```
 
