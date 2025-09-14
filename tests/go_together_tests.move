@@ -14,11 +14,11 @@ fun test_registrar_conductor() {
     let user = @0xAD;
 
     let mut scenario = test_scenario::begin(user);
-    let mut registro = app::crear_registro(scenario.ctx());
+    let mut registro = app::crear_registro_for_test(scenario.ctx());
 
     scenario.next_tx(user);
     {
-        let conductor = app::crear_conductor(string::utf8(b"Juan"), string::utf8(b"Toyota"), scenario.ctx());
+        let conductor = app::crear_conductor_for_test(string::utf8(b"Juan"), string::utf8(b"Toyota"), scenario.ctx());
         app::registrar_conductor(&mut registro, conductor);
         let esta = go_together::app::esta_conductor_registrado(&registro, user);
         assert!(esta, 100);
@@ -34,7 +34,7 @@ fun test_registrar_pasajero() {
     let user = @0xAD;
 
     let mut scenario = test_scenario::begin(user);
-    let mut registro = app::crear_registro_pasajeros(scenario.ctx());
+    let mut registro = app::crear_registro_pasajeros_for_test(scenario.ctx());
 
     scenario.next_tx(user);
     {
@@ -53,11 +53,11 @@ fun test_reservar_viaje() {
     let pasajero_addr = @0xAE;
 
     let mut scenario = test_scenario::begin(conductor_addr);
-    let mut registro_conductores = app::crear_registro(scenario.ctx());
-    let mut registro_pasajeros = app::crear_registro_pasajeros(scenario.ctx());
+    let mut registro_conductores = app::crear_registro_for_test(scenario.ctx());
+    let mut registro_pasajeros = app::crear_registro_pasajeros_for_test(scenario.ctx());
 
     // Registrar conductor
-    let conductor = app::crear_conductor(string::utf8(b"Juan"), string::utf8(b"Toyota"), scenario.ctx());
+    let conductor = app::crear_conductor_for_test(string::utf8(b"Juan"), string::utf8(b"Toyota"), scenario.ctx());
     app::registrar_conductor(&mut registro_conductores, conductor);
 
     scenario.next_tx(pasajero_addr);
@@ -83,18 +83,13 @@ fun test_reservar_viaje() {
         // Cambiar de vuelta al conductor para crear el viaje
         scenario.next_tx(conductor_addr);
         
-        // Crear un viaje vacío
-        let mut viaje = app::crear_viaje_vacio(
+        // Crear un viaje usando la función de test
+        let mut viaje = app::crear_viaje_for_test(
+            &mut conductor_obj,
+            &pasajero_obj,
             string::utf8(b"Madrid"),
             string::utf8(b"Barcelona"),
             scenario.ctx()
-        );
-        
-        // Usar la función reservar_viaje para reservar el viaje
-        app::reservar_viaje(
-            &mut viaje,
-            &mut conductor_obj,
-            &pasajero_obj
         );
         
         // Verificar que el conductor no está disponible después de reservar el viaje

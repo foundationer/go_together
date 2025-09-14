@@ -66,11 +66,19 @@ publish_module() {
     PUBLISHER_ADDRESS=$(sui client active-address)
     print_info "Dirección del publicador: $PUBLISHER_ADDRESS"
     
-    # Publicar el módulo
-    PUBLISH_RESULT=$(sui client publish --gas-budget 100000000)
+    # Publicar el módulo y guardar resultado en archivo temporal
+    sui client publish --gas-budget 100000000 --json > publish_result.json
     
-    # Extraer el package ID del resultado
-    PACKAGE_ID=$(echo "$PUBLISH_RESULT" | grep -o 'packageId: [^,]*' | cut -d' ' -f2)
+    # Extraer el package ID del resultado JSON
+    PACKAGE_ID=$(cat publish_result.json | jq -r '.objectChanges[] | select(.type == "published") | .packageId')
+    
+    if [ -z "$PACKAGE_ID" ] || [ "$PACKAGE_ID" = "null" ]; then
+        print_error "No se pudo extraer el Package ID del resultado de publicación"
+        print_info "Resultado de publicación:"
+        cat publish_result.json
+        exit 1
+    fi
+    
     print_success "Módulo publicado con Package ID: $PACKAGE_ID"
     
     # Guardar el package ID para uso posterior
@@ -81,7 +89,19 @@ publish_module() {
 create_registries() {
     print_info "Creando registros globales..."
     
+    # Verificar que el archivo package_id.txt existe y no está vacío
+    if [ ! -f "package_id.txt" ] || [ ! -s "package_id.txt" ]; then
+        print_error "Archivo package_id.txt no encontrado o vacío. Ejecuta 'publish' primero."
+        exit 1
+    fi
+    
     PACKAGE_ID=$(cat package_id.txt)
+    
+    # Verificar que el package ID es válido
+    if [ -z "$PACKAGE_ID" ] || [[ ! "$PACKAGE_ID" =~ ^0x[0-9a-fA-F]+$ ]]; then
+        print_error "Package ID inválido: $PACKAGE_ID"
+        exit 1
+    fi
     
     # Crear registro de conductores
     print_info "Creando registro de conductores..."
@@ -93,6 +113,12 @@ create_registries() {
         --json > conductor_registry.json
     
     CONDUCTOR_REGISTRY_ID=$(cat conductor_registry.json | jq -r '.objectChanges[] | select(.type == "created") | .objectId')
+    if [ -z "$CONDUCTOR_REGISTRY_ID" ] || [ "$CONDUCTOR_REGISTRY_ID" = "null" ]; then
+        print_error "No se pudo obtener el ID del registro de conductores"
+        print_info "Resultado de la transacción:"
+        cat conductor_registry.json
+        exit 1
+    fi
     print_success "Registro de conductores creado: $CONDUCTOR_REGISTRY_ID"
     echo "$CONDUCTOR_REGISTRY_ID" > conductor_registry_id.txt
     
@@ -106,6 +132,12 @@ create_registries() {
         --json > passenger_registry.json
     
     PASSENGER_REGISTRY_ID=$(cat passenger_registry.json | jq -r '.objectChanges[] | select(.type == "created") | .objectId')
+    if [ -z "$PASSENGER_REGISTRY_ID" ] || [ "$PASSENGER_REGISTRY_ID" = "null" ]; then
+        print_error "No se pudo obtener el ID del registro de pasajeros"
+        print_info "Resultado de la transacción:"
+        cat passenger_registry.json
+        exit 1
+    fi
     print_success "Registro de pasajeros creado: $PASSENGER_REGISTRY_ID"
     echo "$PASSENGER_REGISTRY_ID" > passenger_registry_id.txt
 }
@@ -117,10 +149,21 @@ create_driver() {
     
     print_info "Creando conductor: $driver_name con coche: $car_model"
     
+    # Verificar archivos necesarios
+    if [ ! -f "package_id.txt" ] || [ ! -s "package_id.txt" ]; then
+        print_error "Archivo package_id.txt no encontrado. Ejecuta 'publish' primero."
+        exit 1
+    fi
+    
+    if [ ! -f "conductor_registry_id.txt" ] || [ ! -s "conductor_registry_id.txt" ]; then
+        print_error "Archivo conductor_registry_id.txt no encontrado. Ejecuta 'create_registries' primero."
+        exit 1
+    fi
+    
     PACKAGE_ID=$(cat package_id.txt)
     CONDUCTOR_REGISTRY_ID=$(cat conductor_registry_id.txt)
     
-    # Crear el conductor
+    # Crear el conductor (se transfiere automáticamente al usuario)
     sui client call \
         --package "$PACKAGE_ID" \
         --module app \
@@ -130,6 +173,12 @@ create_driver() {
         --json > conductor_creation.json
     
     CONDUCTOR_ID=$(cat conductor_creation.json | jq -r '.objectChanges[] | select(.type == "created") | .objectId')
+    if [ -z "$CONDUCTOR_ID" ] || [ "$CONDUCTOR_ID" = "null" ]; then
+        print_error "No se pudo obtener el ID del conductor"
+        print_info "Resultado de la transacción:"
+        cat conductor_creation.json
+        exit 1
+    fi
     print_success "Conductor creado: $CONDUCTOR_ID"
     
     # Registrar el conductor en el registro global
@@ -150,6 +199,17 @@ create_passenger() {
     local passenger_name="$1"
     
     print_info "Creando pasajero: $passenger_name"
+    
+    # Verificar archivos necesarios
+    if [ ! -f "package_id.txt" ] || [ ! -s "package_id.txt" ]; then
+        print_error "Archivo package_id.txt no encontrado. Ejecuta 'publish' primero."
+        exit 1
+    fi
+    
+    if [ ! -f "passenger_registry_id.txt" ] || [ ! -s "passenger_registry_id.txt" ]; then
+        print_error "Archivo passenger_registry_id.txt no encontrado. Ejecuta 'create_registries' primero."
+        exit 1
+    fi
     
     PACKAGE_ID=$(cat package_id.txt)
     PASSENGER_REGISTRY_ID=$(cat passenger_registry_id.txt)
@@ -175,11 +235,27 @@ create_trip() {
     
     print_info "Creando viaje de $origin a $destination"
     
+    # Verificar archivos necesarios
+    if [ ! -f "package_id.txt" ] || [ ! -s "package_id.txt" ]; then
+        print_error "Archivo package_id.txt no encontrado. Ejecuta 'publish' primero."
+        exit 1
+    fi
+    
+    if [ ! -f "driver_id.txt" ] || [ ! -s "driver_id.txt" ]; then
+        print_error "Archivo driver_id.txt no encontrado. Ejecuta 'create_driver' primero."
+        exit 1
+    fi
+    
+    if [ ! -f "passenger_id.txt" ] || [ ! -s "passenger_id.txt" ]; then
+        print_error "Archivo passenger_id.txt no encontrado. Ejecuta 'create_passenger' primero."
+        exit 1
+    fi
+    
     PACKAGE_ID=$(cat package_id.txt)
     DRIVER_ID=$(cat driver_id.txt)
     PASSENGER_ID=$(cat passenger_id.txt)
     
-    # Crear el viaje
+    # Crear el viaje (se transfiere automáticamente al conductor)
     sui client call \
         --package "$PACKAGE_ID" \
         --module app \
@@ -189,6 +265,12 @@ create_trip() {
         --json > trip_creation.json
     
     TRIP_ID=$(cat trip_creation.json | jq -r '.objectChanges[] | select(.type == "created") | .objectId')
+    if [ -z "$TRIP_ID" ] || [ "$TRIP_ID" = "null" ]; then
+        print_error "No se pudo obtener el ID del viaje"
+        print_info "Resultado de la transacción:"
+        cat trip_creation.json
+        exit 1
+    fi
     print_success "Viaje creado: $TRIP_ID"
     echo "$TRIP_ID" > trip_id.txt
 }
@@ -242,6 +324,12 @@ finalize_trip() {
     
     print_info "Finalizando viaje: $trip_id"
     
+    # Verificar archivos necesarios
+    if [ ! -f "package_id.txt" ] || [ ! -s "package_id.txt" ]; then
+        print_error "Archivo package_id.txt no encontrado. Ejecuta 'publish' primero."
+        exit 1
+    fi
+    
     PACKAGE_ID=$(cat package_id.txt)
     
     sui client call \
@@ -261,6 +349,13 @@ cleanup() {
     print_success "Limpieza completada"
 }
 
+# Limpiar archivos temporales al inicio
+cleanup_start() {
+    print_info "Limpiando archivos temporales previos..."
+    rm -f *.json *.txt
+    print_success "Limpieza completada"
+}
+
 # Función principal
 main() {
     print_info "=== Script de ejemplo para Go Together ==="
@@ -269,6 +364,9 @@ main() {
     # Verificaciones iniciales
     check_sui_cli
     check_directory
+    
+    # Limpiar archivos temporales previos
+    cleanup_start
     
     # Compilar y publicar
     build_project

@@ -61,13 +61,23 @@ module go_together::app {
     }
 
     // Crear el registro global (se llama una vez)
-    public fun crear_registro(ctx: &mut TxContext): RegistroConductores {
+    public fun crear_registro(ctx: &mut TxContext) {
         let registro = RegistroConductores {
             id: object::new(ctx),
             conductores_registrados: vec_set::empty(),
             total_conductores: 0,
         };
-        registro
+        transfer::share_object(registro);
+    }
+
+    // Función auxiliar para tests que devuelve el registro
+    #[test_only]
+    public fun crear_registro_for_test(ctx: &mut TxContext): RegistroConductores {
+        RegistroConductores {
+            id: object::new(ctx),
+            conductores_registrados: vec_set::empty(),
+            total_conductores: 0,
+        }
     }
 
     // Función pública para validar si un usuario está registrado como conductor
@@ -80,7 +90,8 @@ module go_together::app {
         id.delete();
     }   
 
-    public fun crear_conductor(nombre: String, coche: String, ctx: &mut TxContext): Conductor {
+    #[allow(lint(self_transfer))]
+    public fun crear_conductor(nombre: String, coche: String, ctx: &mut TxContext) {
         let propietario = tx_context::sender(ctx);
 
         let conductor = Conductor {
@@ -90,7 +101,21 @@ module go_together::app {
             disponible: true,
             propietario
         };
-        conductor
+        transfer::transfer(conductor, propietario);
+    }
+
+    // Función auxiliar para tests que devuelve el conductor
+    #[test_only]
+    public fun crear_conductor_for_test(nombre: String, coche: String, ctx: &mut TxContext): Conductor {
+        let propietario = tx_context::sender(ctx);
+
+        Conductor {
+            id: object::new(ctx),
+            nombre,
+            coche,
+            disponible: true,
+            propietario
+        }
     }
 
     // Crear un nuevo conductor, disponible para recibir viajes
@@ -111,13 +136,23 @@ module go_together::app {
     }
 
     // Crear el registro global (se llama una vez)
-    public fun crear_registro_pasajeros(ctx: &mut TxContext): RegistroPasajeros {
+    public fun crear_registro_pasajeros(ctx: &mut TxContext) {
         let registro = RegistroPasajeros {
             id: object::new(ctx),
             pasajeros_registrados: vec_set::empty(),
             total_pasajeros: 0,
         };
-        registro
+        transfer::share_object(registro);
+    }
+
+    // Función auxiliar para tests que devuelve el registro de pasajeros
+    #[test_only]
+    public fun crear_registro_pasajeros_for_test(ctx: &mut TxContext): RegistroPasajeros {
+        RegistroPasajeros {
+            id: object::new(ctx),
+            pasajeros_registrados: vec_set::empty(),
+            total_pasajeros: 0,
+        }
     }
 
     // Crear un nuevo pasajero
@@ -187,14 +222,15 @@ module go_together::app {
         conductor.disponible = disponible;
     }
 
-    // Función para crear un viaje público, devolviendo el objeto para que el caller lo transfiera
+    // Función para crear un viaje público, transfiriendo el objeto al conductor
+    #[allow(lint(self_transfer))]
     public fun crear_viaje(
         conductor: &mut Conductor,
         pasajero: &Pasajero,
         origen: String,
         destino: String,
         ctx: &mut TxContext
-    ): Viaje {
+    ) {
         // Verificar que el conductor esté disponible
         assert!(conductor.disponible, 1);
 
@@ -210,7 +246,35 @@ module go_together::app {
             destino,
             activo: true,
         };
-        viaje
+        
+        // Transferir el viaje al conductor
+        transfer::transfer(viaje, conductor.propietario);
+    }
+
+    // Función auxiliar para tests que devuelve el viaje
+    #[test_only]
+    public fun crear_viaje_for_test(
+        conductor: &mut Conductor,
+        pasajero: &Pasajero,
+        origen: String,
+        destino: String,
+        ctx: &mut TxContext
+    ): Viaje {
+        // Verificar que el conductor esté disponible
+        assert!(conductor.disponible, 1);
+
+        // Marcar conductor como no disponible
+        conductor.disponible = false;
+
+        // Crear el viaje
+        Viaje {
+            id: object::new(ctx),
+            conductor_nombre: conductor.nombre,
+            pasajero_nombre: pasajero.nombre,
+            origen,
+            destino,
+            activo: true,
+        }
     }
 
     // Función para consultar si un viaje está activo

@@ -133,50 +133,93 @@ Run tests with:
 sui move test
 ```
 
-## 🚀 Example Scripts
+## 🚀 Scripts and Examples
 
-The project includes bash scripts that demonstrate how to use the Sui CLI to interact with the module:
+The project includes organized bash scripts that demonstrate how to use the Sui CLI to interact with the module:
 
-### Complete Script (`ejemplo_uso.sh`)
+### Main Script (`go_together` or `scripts/go_together.sh`)
+A unified script that provides access to all functionality:
+
+```bash
+# Using the symlink (recommended)
+./go_together [comando] [argumentos...]
+
+# Or using the full path
+./scripts/go_together.sh [comando] [argumentos...]
+```
+
+Available commands:
+```bash
+# Development
+./go_together build                    # Compilar el proyecto
+./go_together publish                  # Publicar el módulo
+./go_together test                     # Ejecutar tests unitarios
+
+# Examples
+./go_together example-simple           # Ejecutar ejemplo simple
+./go_together example-full             # Ejecutar ejemplo completo
+
+# Testing
+./go_together test-conductor           # Probar función crear_conductor
+./go_together test-publish             # Probar extracción de package ID
+./go_together test-registry            # Probar funciones de registro
+./go_together test-trip                # Probar función crear_viaje
+
+# Operations
+./go_together create-driver "John" "Toyota" <registry_id>
+./go_together create-passenger "Mary" <registry_id>
+./go_together create-trip "Downtown" "Airport" <driver_id> <passenger_id>
+./go_together check-driver <driver_id>
+./go_together check-trip <trip_id>
+./go_together finalize-trip <trip_id> <driver_id>
+
+# Utilities
+./go_together clean                    # Limpiar archivos temporales
+./go_together help                     # Mostrar ayuda
+```
+
+### Individual Scripts
+
+#### Complete Example (`scripts/examples/ejemplo_uso.sh`)
 A complete script that executes the entire carpooling flow:
 
 ```bash
-./ejemplo_uso.sh
+./scripts/examples/ejemplo_uso.sh
 ```
 
-This script:
-- Compiles and publishes the module
-- Creates global registries
-- Registers a driver and a passenger
-- Creates a trip
-- Demonstrates trip finalization
-
-### Modular Script (`ejemplo_simple.sh`)
+#### Modular Script (`scripts/examples/ejemplo_simple.sh`)
 A modular script for specific use cases:
 
 ```bash
 # Build project
-./ejemplo_simple.sh build
+./scripts/examples/ejemplo_simple.sh build
 
 # Publish module
-./ejemplo_simple.sh publish
+./scripts/examples/ejemplo_simple.sh publish
 
 # Create driver
-./ejemplo_simple.sh create-driver "John" "Toyota" <registry_id>
+./scripts/examples/ejemplo_simple.sh create-driver "John" "Toyota" <registry_id>
 
 # Create passenger
-./ejemplo_simple.sh create-passenger "Mary" <registry_id>
+./scripts/examples/ejemplo_simple.sh create-passenger "Mary" <registry_id>
 
 # Create trip
-./ejemplo_simple.sh create-trip "Downtown" "Airport" <driver_id> <passenger_id>
+./scripts/examples/ejemplo_simple.sh create-trip "Downtown" "Airport" <driver_id> <passenger_id>
 
 # Check status
-./ejemplo_simple.sh check-driver <driver_id>
-./ejemplo_simple.sh check-trip <trip_id>
+./scripts/examples/ejemplo_simple.sh check-driver <driver_id>
+./scripts/examples/ejemplo_simple.sh check-trip <trip_id>
 
 # Finalize trip
-./ejemplo_simple.sh finalize-trip <trip_id> <driver_id>
+./scripts/examples/ejemplo_simple.sh finalize-trip <trip_id> <driver_id>
 ```
+
+#### Test Scripts (`scripts/tests/`)
+Individual test scripts for specific functionality:
+- `test_conductor.sh` - Test driver creation
+- `test_publish.sh` - Test package publishing
+- `test_registry.sh` - Test registry functions
+- `test_trip.sh` - Test trip creation
 
 ### Script Prerequisites
 - Sui CLI installed
@@ -194,10 +237,19 @@ go_together/
 │   └── go_together.move          # Main Move module
 ├── tests/
 │   └── go_together_tests.move    # Test suite
+├── scripts/
+│   ├── go_together.sh            # Main unified script
+│   ├── examples/
+│   │   ├── ejemplo_uso.sh        # Complete demonstration script
+│   │   └── ejemplo_simple.sh     # Modular script for specific cases
+│   └── tests/
+│       ├── test_conductor.sh     # Test driver creation
+│       ├── test_publish.sh       # Test package publishing
+│       ├── test_registry.sh      # Test registry functions
+│       └── test_trip.sh          # Test trip creation
 ├── Move.toml                     # Project configuration
 ├── Move.lock                     # Dependency lock file
-├── ejemplo_uso.sh               # Complete demonstration script
-├── ejemplo_simple.sh            # Modular script for specific cases
+├── go_together                   # Symlink to main script (for easy access)
 ├── SCRIPT_EJEMPLO.md            # Script documentation
 └── README.md                     # This file
 ```
